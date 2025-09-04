@@ -1,0 +1,71 @@
+---
+title: "Preliminary Analysis"
+format: html
+editor: visual
+---
+
+This preliminary analysis is for three main reasons: 
+ - Examining correlation between our 6 outcomes
+ - Plot symptoms by age, seperated by our groups.
+ - Examiniation of missing data, for purposes of imputation.
+
+#Load Data
+```{r}
+setwd("C:/Users/hubshmz/Documents/Code/git/data")  # FORBOW computer
+# setwd("C:/Users/zachh/Documents/Code/git/Data")  # Laptop
+# setwd("C:/Users/zacha/Documents/RStudio/forbow/git/Data") # Tupper Windows Comp
+# setwd("C:/Users/zacha/Documents/forbow/code/git") # Home Computer
+
+FOR <- readr::read_csv("FOR.csv", col_types = cols(.default = col_character())) 
+Night <- readr::read_csv("part4_nightsummary_sleep_cleaned.csv", col_types = cols(.default = col_character())) 
+NightM <- read_excel("motionloggerdata.xlsx")
+```
+
+#Merge Datasets
+```{r}
+#Create a Subject_ID variable based on the filename extracted, 
+Night$Subject_ID <- substr(Night$filename, 1, 12)
+Night$Assessment_Date <- str_extract(Night$filename, "\\d{4}-\\d{2}-\\d{2}")
+Night <- Night %>% filter(!str_detect(filename, "F[1-3]|f[1-3]|M[1-3]|m[1-3]|\\$R"))
+
+#Remove duplicate data
+bin_files_to_remove <- c("8000103174_left wrist_068158_2025-06-03 10-40-36.bin", "8000156273_left wrist_060381_2024-11-05 12-04-08_partial.bin", "8000156273_left wrist_060381_2024-11-05 12-27-40.bin", "800304581_right wrist_060843_2024-11-05 13-16-09.bin", "800304582__060365_2024-11-05 12-03-44.bin",  "800304582__060365_2024-11-05 12-28-01.bin")
+Night <- Night %>% filter(!filename %in% bin_files_to_remove)
+
+
+Night <- Night %>% mutate(Subject_ID = gsub("^800-(\\d{3})-(\\d+)_$", "800-0\\1-\\2", Subject_ID))
+Night$Subject_ID <- gsub("-", "", Night$Subject_ID)
+Night$Subject_ID <- gsub("[a-zA-Z]", "", Night$Subject_ID)
+Night$Subject_ID <- gsub("_", "", Night$Subject_ID)
+FOR$Subject_ID <- gsub("-", "", as.character(FOR$subject_id))
+
+setDT(Night)
+setDT(FOR)
+Night$geneactiv <- 1
+FOR[, Assessment_Date := as.Date(assessment_date)]
+FOR$Assessment_Date_FOR <- FOR$Assessment_Date
+Night[, Assessment_Date := as.Date(Assessment_Date)]  
+Night$Assessment_Date_Night <- Night$Assessment_Date
+
+
+merged1 <- Night[FOR, on = .(Subject_ID), allow.cartesian = TRUE]
+merged1[, diffdays := abs(as.numeric(difftime(Assessment_Date_Night, Assessment_Date_FOR, units = "days")))]
+merged1 <- merged1 %>% filter(diffdays <= 179)
+
+NightM <- NightM %>%
+  mutate(filename = paste0(ID, "motionlogg"))
+NightM$weekday <- NightM$eday
+NightM <- NightM %>% 
+  filter(!str_detect(Subject_ID, "F[1-3]|f[1-3]|M[1-3]|m[1-3]|\\$R"))
+setDT(NightM)
+NightM[, Assessment_Date := as.Date(sdate)]
+NightM$Assessment_date_nightM <- NightM$Assessment_Date
+NightM$SptDuration <- NightM$dur/60
+
+merged2 <- NightM[FOR, on = .(Subject_ID), allow.cartesian = TRUE]
+merged2[, diffdays := abs(as.numeric(difftime(Assessment_date_nightM, Assessment_Date_FOR, units = "days")))]
+merged2 <- merged2 %>% filter(diffdays <= 179)
+merged2$motionlogger <- 1
+
+merged <- rbindlist(list(merged1, merged2), fill = TRUE)
+```
