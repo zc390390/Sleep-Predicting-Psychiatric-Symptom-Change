@@ -4,26 +4,51 @@ output: html_document
 date: "2025-06-17"
 ---
 
+
+Goal of This Is to Create our Predictor and Outcome Variables
+- Predictors
+    Demographics: Age, sex at birth, race, current SES, duration follow-up, pubertal status,
+                  living w/ bio mother/father (dichotomized, currently 1-4).
+                  
+    Offspring Diagnosis: bipolar, unipolar, anxiety, adhd, behavior disorder, substance use     
+                         disorders, psychoti disorders
+                         
+    Offspring Medication: antidepressants, antipsychotics, mood stabilizer, ADHD medications,                                 sedatives/hypnotics
+    
+    Parent Diagnosis: bipolar, unipolar depression, anxiety, ADHD, behavior disorder, substance use 
+                      disorder, psychotic disorder
+                      
+    Sleep: Sleep predictors are added in a later stage.
+    
+- Outcomes
+    Self-reported Symptoms: Depression, Affective Lability, Anxiety, ADHD, Psychotic Like       
+                            Experiences.
+
+    
+
+
+
+
+
+
+
+
 To date this is the capabilities of this code
-      Main parent group diagnosis
-      Dim anxiety for young participant. 
-      Looks for diagnosis
-      Creates lifetime diagnosis based on current
-      Creates onset of disorder variable
-      Has some hospital information on diagnosis
+- Predictor Capabilities:
+      - Youth Diagnosis is Finished
+      - Demographics: Age, sex, & race are done. Duration follow-up, living status, and PDS need to 
+                      be made.
+      - Parent Diagnosis: Needs to be expanded to include anxiety, adhd, behavior, & SUD.
+      - Offspring Medication Use: Untouched. 
+      
+- Outcome Capabilities:
+      - Anxiety: Have a standardized anxiety measure through SCARED, could include SCAS if needed.
+      - Depression: MFQ untouched.
+      - ADHD Symptoms: CBCL untouched.
+      - Psychotic-Like Symptoms: Funny feelings untouched. 
+      - Affective Liability: CALS untouched. 
 
-##Need to do
-Create value for different parent diagnoses
-Need lifetime baseline diagnosis of disorders
 
-Make dim and antecedent variables
-  dimdep dimanx scaredytot dimafflaby dimafflab dimirrit dimpsych dimbs dimsleep
-  antanx antafflab antpsych antbs antsleep antcog antdep antno 
-
-
-##Things of Note
-Maybe some weird diagnosis variables? Like SAD.
-Observations always have one observation that is NA?
 
 ## Library
 ```{r setup, include=FALSE}
@@ -44,7 +69,7 @@ setwd("C:/Users/hubshmz/Documents/Code/git/data")  # FORBOW computer
 # setwd("C:/Users/zacha/Documents/RStudio/forbow/git/Data/ESCAP") # Tupper Windows Comp
 # setwd("C:/Users/zacha/Documents/forbow/code/git") # Home Computer
 
-FOR <- read.csv("FORBOWMasterDatabase.csv", header=TRUE, fileEncoding="latin1")
+FOR <- read.csv("rawdataforanalysis.csv", header=TRUE, fileEncoding="latin1")
 ```
 
 
@@ -123,26 +148,26 @@ remove_indices <- c(11, 17, 26, 31, 38, 43)
 Scas_C_Variables <- Scas_C_Variables[-remove_indices]
 
 
-FOR <- FOR %>%
-  # Recode 9s to NA
-  mutate(across(all_of(Scas_C_Variables), ~na_if(.x, 9))) %>%
-  mutate(across(all_of(Scas_P_Variables), ~na_if(.x, 9))) %>%
-  
-  # Compute total scores
-  mutate(
-    Scas_C_Total = rowSums(across(all_of(Scas_C_Variables)), na.rm = TRUE),
-    Scas_P_Total = rowSums(across(all_of(Scas_P_Variables)), na.rm = TRUE)
-  ) %>%
-  
-  # Standardize total scores
-  mutate(
-    Scas_C_z = as.numeric(scale(Scas_C_Total)),
-    Scas_P_z = as.numeric(scale(Scas_P_Total))
-  )
+# FOR <- FOR %>%
+#   # Recode 9s to NA
+#   mutate(across(all_of(Scas_C_Variables), ~na_if(.x, 9))) %>%
+#   mutate(across(all_of(Scas_P_Variables), ~na_if(.x, 9))) %>%
+#   
+#   # Compute total scores
+#   mutate(
+#     Scas_C_Total = rowSums(across(all_of(Scas_C_Variables)), na.rm = TRUE),
+#     Scas_P_Total = rowSums(across(all_of(Scas_P_Variables)), na.rm = TRUE)
+#   ) %>%
+#   
+#   # Standardize total scores
+#   mutate(
+#     Scas_C_z = as.numeric(scale(Scas_C_Total)),
+#     Scas_P_z = as.numeric(scale(Scas_P_Total))
+#   )
 
 FOR <- FOR %>%
   # SCAS dimanx
-  mutate(dimanx = rowMeans(across(c(Scas_C_z, Scas_P_z, Scared_C_Total_z, Scared_P_Total_z)), na.rm = TRUE)) 
+  mutate(dimanx = rowMeans(across(c(Scared_C_Total_z, Scared_P_Total_z)), na.rm = TRUE)) 
 
 FOR <- FOR %>%
   group_by(subject_id) %>%
@@ -611,7 +636,7 @@ for (dx in KSADS) {
 ##Hospital Diagnosis
 ```{r}
 ###  Diagnosis from IWK, notes, conseus
-
+FOR$iid <- substr(FOR$subject_id, 10,12)
 FOR$iid <- as.numeric(FOR$iid)
 #Originally ccCan was cannabis, should this be different?
 FOR <- FOR %>%
@@ -632,37 +657,6 @@ FOR <- FOR %>%
     oSCZ = ifelse((iid == 443 & time_point == 3) |
                    (iid == 281 & time_point == 5), 1, oSCZ)
   )
-
-
-
-
-
-
-# ** additional information from IWK, notes, consensusdg
-# ** iid 443, transient psychosis, schizoprhenia spectrum disorder, on aripiprazole
-# replace ccSUD = 1 if iid==443 & time==2
-# replace ccSUD = 1 if iid==443 & time==3
-# replace cannabis = 1 if iid==443 & time==3
-# replace ccPsychosis=1 if iid==443 & time==3
-# replace cannabis = 1 if iid==321 & time==3
-# replace cannabis = 1 if iid==321 & time==4
-# replace cannabis = 1 if iid==321 & time==5
-# replace ccSUD = 1 if iid==321 & time==5
-# replace clSUD = 1 if iid==321 & time==5
-# replace ccBorderline = 1 if iid==321 & time==5
-# replace clBorderline = 1 if iid==321 & time==5
-# replace ccAntisocial = 1 if iid==321 & time==5
-# replace clAntisocial = 1 if iid==321 & time==5
-# 
-# replace clSUD = 1 if iid==443 & time==2
-# replace clSUD = 1 if iid==443 & time==3
-# replace clPsychosis=1 if iid==443 & time==3
-# replace oSCHZ=1 if iid==443 & time==3
-# replace ccPsychosis=1 if iid==281 & time==5
-# replace clPsychosis=1 if iid==281 & time>4.5
-# replace oSCHZ=1 if iid==281 & time==5
-
-
 ##Consesus Lifetime Diagnosis
 ```
 
