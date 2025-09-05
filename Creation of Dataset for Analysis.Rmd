@@ -36,10 +36,10 @@ To date this is the capabilities of this code
       - Offspring Medication Use: Untouched. 
       
 - Outcome Capabilities:
-      - Anxiety: Have a standardized anxiety measure through SCARED, could include SCAS if needed.
-      - Depression: MFQ untouched.
+      - Anxiety: Made standardized SCARED, can add SCAS.
+      - Depression: Made standarized MFQ. 
       - ADHD Symptoms: CBCL untouched.
-      - Psychotic-Like Symptoms: Funny feelings untouched. 
+      - Psychotic-Like Symptoms: Need to work out how we are defining psychotic experiences with FF. Not a self-report. 
       - Affective Liability: CALS untouched. 
 
 
@@ -116,8 +116,129 @@ Scas_C_Variables <- Scas_C_Variables[-remove_indices]
 
 FOR <- FOR %>%
   # SCAS dimanx
-  mutate(dimanx = rowMeans(across(c(Scared_C_Total_z, Scared_P_Total_z)), na.rm = TRUE)) 
+  mutate(dimanx = rowMeans(across(c(Scared_C_Total_z, Scared_P_Total_z)), na.rm = TRUE))
+```
 
+##Dimension Depression - MFQ
+```{r}
+ls(FOR, pattern = 'mfq')
+
+mfq_C_Variables <- paste0("mfq_", sprintf("%02d", 1:13))
+mfq_P_Variables <- paste0("mfq_p", 1:13)
+
+FOR <- FOR %>%
+  # Recode 9s to NA
+  mutate(across(all_of(mfq_C_Variables), ~na_if(.x, 9))) %>%
+  mutate(across(all_of(mfq_P_Variables), ~na_if(.x, 9))) %>%
+  
+  # Compute total scores
+  mutate(
+    mfq_C_Total = rowSums(across(all_of(mfq_C_Variables)), na.rm = TRUE),
+    mfq_P_Total = rowSums(across(all_of(mfq_P_Variables)), na.rm = TRUE)
+  ) %>%
+  
+  # Standardize total scores
+  mutate(
+    mfq_C_Total_z = as.numeric(scale(mfq_C_Total)),
+    mfq_P_Total_z = as.numeric(scale(mfq_P_Total))
+  )
+
+FOR <- FOR %>%
+  # MFQ dimdep
+  mutate(dimdep = rowMeans(across(c(mfq_C_Total_z, mfq_P_Total_z)), na.rm = TRUE))
+```
+
+##Dimension ADHD?
+Needs to be double checked
+Chat about what we are looking for specifically. 
+```{r}
+ls(FOR, pattern = 'cbcl')
+
+cbcl_vars <- c(
+  "cbcl_042","cbcl_065","cbcl_069","cbcl_075","cbcl_080","cbcl_088","cbcl_102","cbcl_103","cbcl_111",
+  "cbcl_051","cbcl_054","cbcl_056a","cbcl_056b","cbcl_056c","cbcl_056d","cbcl_056e","cbcl_056f","cbcl_056g",
+  "cbcl_005","cbcl_012","cbcl_014","cbcl_031","cbcl_032","cbcl_033","cbcl_034","cbcl_035",
+  "cbcl_045","cbcl_050","cbcl_052","cbcl_071","cbcl_089","cbcl_103","cbcl_112",
+  "cbcl_002","cbcl_026","cbcl_028","cbcl_039","cbcl_043","cbcl_063","cbcl_067","cbcl_072","cbcl_081","cbcl_082","cbcl_090","cbcl_096","cbcl_099","cbcl_101",
+  "cbcl_105","cbcl_106","cbcl_003","cbcl_007","cbcl_016","cbcl_019","cbcl_020","cbcl_021","cbcl_022","cbcl_023","cbcl_027","cbcl_037","cbcl_057","cbcl_068",
+  "cbcl_074","cbcl_086","cbcl_087","cbcl_093","cbcl_094","cbcl_095","cbcl_097","cbcl_104",
+  "cbcl_001","cbcl_004","cbcl_008","cbcl_010","cbcl_013","cbcl_017","cbcl_041","cbcl_045","cbcl_046","cbcl_061","cbcl_062","cbcl_078","cbcl_080",
+  "cbcl_006","cbcl_015","cbcl_018","cbcl_024","cbcl_028","cbcl_029","cbcl_030","cbcl_036","cbcl_044","cbcl_047","cbcl_049","cbcl_053","cbcl_056h",
+  "cbcl_058","cbcl_059","cbcl_060","cbcl_073","cbcl_076","cbcl_077","cbcl_079","cbcl_083","cbcl_091","cbcl_092","cbcl_098","cbcl_100","cbcl_107","cbcl_108","cbcl_109","cbcl_110"
+)
+
+FOR <- FOR %>%
+  mutate(across(all_of(cbcl_vars), ~na_if(.x, 9))) %>%
+  mutate(CBCL_total = rowSums(across(all_of(cbcl_vars))), na.rm = TRUE)
+table(FOR$CBCL_total, useNA = ('always'))
+
+
+
+# * cbcl total score
+# alpha CBCL_042 CBCL_065 CBCL_069 CBCL_075 CBCL_080 CBCL_088 CBCL_102 CBCL_103 CBCL_111 CBCL_051 CBCL_054 CBCL_056a CBCL_056b ///
+# CBCL_056c CBCL_056d CBCL_056e CBCL_056f CBCL_056g CBCL_005 CBCL_012 CBCL_014 CBCL_031 CBCL_032 CBCL_033 CBCL_034 CBCL_035 ///
+# CBCL_045 CBCL_050 CBCL_052 CBCL_071 CBCL_089 CBCL_103 CBCL_112 ///
+#  CBCL_002 CBCL_026 CBCL_028 CBCL_039 CBCL_043 CBCL_063 CBCL_067 CBCL_072 CBCL_081 CBCL_082 CBCL_090 CBCL_096 CBCL_099 CBCL_101 ///
+#  CBCL_105 CBCL_106 CBCL_003 CBCL_007 CBCL_016 CBCL_019 CBCL_020 CBCL_021 CBCL_022 CBCL_023 CBCL_027 CBCL_037 CBCL_057 CBCL_068 ///
+#  CBCL_074 CBCL_086 CBCL_087 CBCL_093 CBCL_094 CBCL_095 CBCL_097 CBCL_104 ///
+#  CBCL_001 CBCL_004 CBCL_008 CBCL_010 CBCL_013 CBCL_017 CBCL_041 CBCL_045 CBCL_046 CBCL_061 CBCL_062 CBCL_078 CBCL_080 ///
+#  CBCL_006 CBCL_015 CBCL_018 CBCL_024 CBCL_028 CBCL_029 CBCL_030 CBCL_036 CBCL_044 CBCL_047 CBCL_049 CBCL_053 CBCL_056h ///
+#  CBCL_058 CBCL_059 CBCL_060 CBCL_073 CBCL_076 CBCL_077 CBCL_079 CBCL_083 CBCL_091 CBCL_092 CBCL_098 CBCL_100 CBCL_107 CBCL_108 CBCL_109 CBCL_110 ///
+```
+
+##Dimensions Psychotic
+This one will require more work, as there are many things that contribute to funnyfeelings. Such as if it is distressing, psychotic, severe, etc.
+
+CURRENTLY THIS WILL TREAT PROBABLE OR DEFINITE PLE AS == 1, ELSE 0. 
+```{r}
+FOR <- FOR %>%
+  mutate(
+    experiencedFF = if_else(
+      if_any(c(ffy1_ple, ffy3_ple, ffy5_ple, ffy7_ple, 
+               ffy9_ple, ffy11_ple, ffy13_ple), 
+             ~ .x %in% c(2, 3)), 
+      1L, 0L
+    )
+  )
+
+table(FOR$experiencedFF)
+```
+
+##Dim Affection Lability
+```{r}
+ls(FOR, pattern = 'cals')
+
+cals_c_var <- paste0("cals_", 1:20)
+cals_p_var <- paste0("cals_pr_", 1:20)
+
+FOR <- FOR %>%
+  mutate(across(all_of(cals_c_var), ~na_if(.x, 9))) %>%
+  mutate(across(all_of(cals_p_var), ~na_if(.x, 9))) %>%
+  mutate(CBCL_total = rowSums(across(all_of(cals_c_var))), na.rm = TRUE) %>%
+  mutate(CBCL_total = rowSums(across(all_of(cals_p_var))), na.rm = TRUE) %>%  
+  %>%
+  mutate(
+    mfq_C_Total_z = as.numeric(scale(mfq_C_Total)),
+    mfq_P_Total_z = as.numeric(scale(mfq_P_Total))
+  )
+  
+
+```
+
+
+
+#Predictors
+##Demographics
+###Age
+```{r}
+FOR$assessment_date <- as.Date(FOR$assessment_date)
+FOR$dob <- as.Date(FOR$dob)
+FOR$age_days <- FOR$assessment_date - FOR$dob
+FOR$age <- as.numeric(FOR$age_days) / 365.25
+```
+
+####Sex
+```{r}
 FOR <- FOR %>%
   group_by(subject_id) %>%
   mutate(dob = dob[which(is.na(time_point))][1]) %>%
@@ -138,14 +259,11 @@ FOR <- FOR %>%
 invalid_si <- c("9999999888", "9999999998")
 FOR <- FOR %>%
   filter(!subject_id %in% invalid_si)
-
-FOR$assessment_date <- as.Date(FOR$assessment_date)
-FOR$dob <- as.Date(FOR$dob)
-FOR$age_days <- FOR$assessment_date - FOR$dob
-FOR$age <- as.numeric(FOR$age_days) / 365.25
 ```
 
-#Predictors
+###Race?
+
+
 ##Parent Diagnosis and Family Risk
 ```{r}
 FOR$fid <- substr(FOR$subject_id, 5, 7)
