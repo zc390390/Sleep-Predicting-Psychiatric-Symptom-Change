@@ -47,13 +47,14 @@ To date this is the capabilities of this code
 # Library
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
-library(haven); library(dplyr); library(tidyr); library(readr); library(readxl); library(data.table); library(stringr); library(purrr)  # Data manipulation & import
+library(haven); library(dplyr); library(tidyr); library(readr); library(readxl); library(data.table); library(stringr); library(purrr); library(stringr)  # Data manipulation & import
 library(lme4); library(lmerTest); library(coxme); library(survival); library(broom); library(MuMIn); library(lsmeans)  # Modeling & statistics
 library(pander); library(apaTables); library(flextable); library(officer); library(webshot2)  # Tables & reporting
 library(ggplot2)  # Plotting
 library(fuzzyjoin)  # Joins
 library(survminer)
 library(plotly)
+
 ```
 
 ## Load CSV
@@ -167,10 +168,10 @@ cbcl_vars <- c(
   "cbcl_058","cbcl_059","cbcl_060","cbcl_073","cbcl_076","cbcl_077","cbcl_079","cbcl_083","cbcl_091","cbcl_092","cbcl_098","cbcl_100","cbcl_107","cbcl_108","cbcl_109","cbcl_110"
 )
 
-FOR <- FOR %>%
-  mutate(across(all_of(cbcl_vars), ~na_if(.x, 9))) %>%
-  mutate(CBCL_total = rowSums(across(all_of(cbcl_vars))), na.rm = TRUE)
-table(FOR$CBCL_total, useNA = ('always'))
+# FOR <- FOR %>%
+#   mutate(across(all_of(cbcl_vars), ~na_if(.x, 9))) %>%
+#   mutate(CBCL_total = rowSums(across(all_of(cbcl_vars))), na.rm = TRUE)
+# table(FOR$CBCL_total, useNA = ('always'))
 
 
 
@@ -251,10 +252,11 @@ FOR <- FOR %>%
     sex == 1 ~ 0,
     sex == 2 ~ 1
   ))
-FOR <- FOR %>%
-  group_by(subject_id) %>%
-  filter(all(!is.na(dob) & dob != "")) %>%  # Keep only groups where *all* dob are not missing or empty
-  ungroup()
+#Idk what this isfor now
+# FOR <- FOR %>%
+#   group_by(subject_id) %>%
+#   filter(all(!is.na(dob) & dob != "")) %>%  # Keep only groups where *all* dob are not missing or empty
+#   ungroup()
 invalid_si <- c("9999999888", "9999999998")
 FOR <- FOR %>%
   filter(!subject_id %in% invalid_si)
@@ -316,6 +318,8 @@ med_vars <- c("med1_pick", "med2_pick", "med3_pick", "med4_pick", "med5_pick", "
 FORt <- FOR %>%
   mutate(across(all_of(med_vars), tolower))
 
+
+#----- MEDICATIONS -----
 #antidepressants
 ##
 
@@ -326,47 +330,135 @@ FORt <- FOR %>%
 ##
 
 #ADHD medications
+FORt <- FORt %>%
+  mutate(
+    ADHDMedNonStim = ifelse(
+      rowSums(across(all_of(med_vars), ~ str_detect(., "tomoxetine|strattera|guanfacine|intuniv|tenex|clonidine|kapvay|viloxazine|qelbree")),
+              na.rm = TRUE) > 0, 1, 0
+    )
+  )
+
+
+
+FORt <- FORt %>%
+  mutate(
+    ADHDMedStim = ifelse(
+      rowSums(across(all_of(med_vars), ~ str_detect(.,"ritalin|concerta|metadate|methylin|daytrana|focalin|adderall|bifentin|vyvanse|vyvance|vivance|dexedrine|procentra|zenzedi")),
+              na.rm = TRUE) > 0, 1, 0
+    )
+  )
+
+FORt <- FORt %>%
+  mutate(
+    ADHDMed = ifelse(ADHDMedStim == 1|ADHDMedNonStim == 1, 1, 0)
+  )
+
+
 #sedatives/hypnotics
 
 ##-------------- SIDE WORK ---------------
 
 #Vitamins and Supplements
 ##melatonin
-#'vitamin/vitamins'
-#fish oil
-
-#Insulin? Diabetes
-
-
-#Birth Control/Contraceptives
-
-
+##'vitamin/vitamins', fish oil, Creatine, sleep aid, iron supplement
 FORt <- FORt %>%
   mutate(
     VitOrSupp = ifelse(
-      apply(select(., all_of(med_vars)) %in% c("melatonin", "gummies", "vitamin", "vitamins"), 
-            1, any),
-      1, 0
+      rowSums(across(all_of(med_vars),
+                     ~ str_detect(., "melatonin|gummies|vitamin|iron supplement|creatine|sleep aid|fish oil")),
+              na.rm = TRUE) > 0, 1, 0
     )
   )
 
+
+
+#Insulin? Diabetes
+FORt <- FORt %>%
+  mutate(
+    insulin = ifelse(
+      rowSums(across(all_of(med_vars), ~ str_detect(., "insulin")),
+              na.rm = TRUE) > 0, 1, 0
+    )
+  )
+
+
+#Birth Control/Contraceptives
+FORt <- FORt %>%
+  mutate(
+    BirthControl = ifelse(
+      rowSums(across(all_of(med_vars), ~ str_detect(., "bc|birth control|birthcontrol|contraceptives")),
+              na.rm = TRUE) > 0, 1, 0
+    )
+  )
+
+
 #Analgesics
+FORt <- FORt %>%
+  mutate(
+    Analgesic = ifelse(
+      rowSums(across(all_of(med_vars), ~ str_detect(., "advil|tylenol")),
+              na.rm = TRUE) > 0, 1, 0
+    )
+  )
+
+
+
+
+
 ##Tylenol
 
 #Dev
-list <- FORt$med1_pick
+list <- c(FORt$med1_pick, FORt$med2_pick, FORt$med3_pick, FORt$med4_pick, FORt$med5_pick, FORt$med6_pick, FORt$med7_pick)
 
+#Remove empty strings
 list <- list[ !str_detect(list, "^$") ]
-head(list, 50)
+list <- list[!str_detect(list, "n/a")]
 
-list <- list[!str_detect(list, "melatonin")]
-list <- list[!str_detect(list, "gummies")]
-list <- list[!str_detect(list, "vitamin")]
-head(list, 50)
+#Remove vitamin and supplements
+##Id assume magn is a supllmenet
+list <- list[!str_detect(list, "melatonin|iron supplement|gummies|vitamin|multivitimin|multivitimans|multivit|multivitmain|supplement|iron supplement|creatine|sleep aid|fish oil|fishoil|multivitiman|b12|b-12|b complex|omega|omga|preworkout|probiotic|protein|multi|mutil|mutitivtamins|mealtonin|gummy|kids vitaamin|iron|magnesium|vit d|vit c|viatmin")]
+
+#Birth Control
+list <- list[!str_detect(list, "bc|birth control|birthcontrol|contraceptive|iud")]
+
+#Insulin / Diabetes Treatment?
+list <- list[!str_detect(list, "insulin|insullin|metformin")]
+
+#Analgesic
+list <- list[!str_detect(list, "tylenol|advil")]
+
+#Antihistamine
+list <- list[!str_detect(list, "reactine|aerius|antihistamine")]
+
+#Inhaler
+list <- list[!str_detect(list, "puffer|inhaler|ventolin|pulmacort|avamys|ventalin")]
+
+#Gastro
+list <- list[!str_detect(list, "prevacid|acid|tums")]
+
+#Fever
+list <- list[!str_detect(list, "ceterizine|allergy|allegra")]
+
+#Acne 
+list <- list[!str_detect(list, "acne|accutane")]
+
+#Antibiotic
+list <- list[!str_detect(list, "antibiotic")]
+
+##Medication
+#ADHD
+list <- list[!str_detect(list, "tomoxetine|strattera|guanfacine|intuniv|tenex|clonidine|kapvay|viloxazine|qelbree")]
+list <- list[!str_detect(list,"ritalin|concerta|metadate|methylin|daytrana|focalin|adderall|adderal|adderral|aderall|bifentin|vyvanse|vyvance|vivance|dexedrine|procentra|zenzedi|foquest|floquest|biphentin|adhd")]
 
 
-#1282 left. 
+#SSRI
+list <- list[!str_detect(list, "prozac|sarafem|zoloft|paxil|luvox|celexa|lexapro|sertraline")]
+head(sort(list), 1000)
 
+
+
+#Antipsychotics
+list <- list[!str_detect(list,"haldol|trilafon|thorazine|prolixin|permitil|trilafon|etrafon|mellaril|loxitane|adasuve|orap|abilify|abilify_discmelt|saphris|rexulti|vraylar|clozaril|fazaclo|versacloz|fanapt|latuda|zyprexa|zyprexa_zydis|invega|seroquel|risperdal|geodon|caplyta")]
 
 
 ```
