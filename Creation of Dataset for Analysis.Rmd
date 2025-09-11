@@ -58,8 +58,8 @@ library(plotly)
 
 ## Load CSV
 ```{r}
-setwd("C:/Users/hubshmz/Documents/Code/git/data")  # FORBOW computer
-# setwd("C:/Users/zachh/Documents/Code/git/Data")  # Laptop
+# setwd("C:/Users/hubshmz/Documents/Code/git/data")  # FORBOW computer
+setwd("C:/Users/zachh/Documents/Code/git/Data")  # Laptop
 # setwd("C:/Users/zacha/Documents/RStudio/forbow/git/Data/ESCAP") # Tupper Windows Comp
 # setwd("C:/Users/zacha/Documents/forbow/code/git") # Home Computer
 
@@ -216,7 +216,6 @@ FOR <- FOR %>%
   mutate(across(all_of(cals_p_var), ~na_if(.x, 9))) %>%
   mutate(CBCL_total = rowSums(across(all_of(cals_c_var))), na.rm = TRUE) %>%
   mutate(CBCL_total = rowSums(across(all_of(cals_p_var))), na.rm = TRUE) %>%  
-  %>%
   mutate(
     mfq_C_Total_z = as.numeric(scale(mfq_C_Total)),
     mfq_P_Total_z = as.numeric(scale(mfq_P_Total))
@@ -308,6 +307,68 @@ combo_summary <- fid_groups %>%
   arrange(desc(n))
 
 print(combo_summary)
+```
+
+##Medication
+```{r}
+med_vars <- c("med1_pick", "med2_pick", "med3_pick", "med4_pick", "med5_pick", "med6_pick", "med7_pick")
+
+FORt <- FOR %>%
+  mutate(across(all_of(med_vars), tolower))
+
+#antidepressants
+##
+
+#antipsychotics 
+##
+
+#mood stabilizer 
+##
+
+#ADHD medications
+#sedatives/hypnotics
+
+##-------------- SIDE WORK ---------------
+
+#Vitamins and Supplements
+##melatonin
+#'vitamin/vitamins'
+#fish oil
+
+#Insulin? Diabetes
+
+
+#Birth Control/Contraceptives
+
+
+FORt <- FORt %>%
+  mutate(
+    VitOrSupp = ifelse(
+      apply(select(., all_of(med_vars)) %in% c("melatonin", "gummies", "vitamin", "vitamins"), 
+            1, any),
+      1, 0
+    )
+  )
+
+#Analgesics
+##Tylenol
+
+#Dev
+list <- FORt$med1_pick
+
+list <- list[ !str_detect(list, "^$") ]
+head(list, 50)
+
+list <- list[!str_detect(list, "melatonin")]
+list <- list[!str_detect(list, "gummies")]
+list <- list[!str_detect(list, "vitamin")]
+head(list, 50)
+
+
+#1282 left. 
+
+
+
 ```
 
 ##Diagnosises
